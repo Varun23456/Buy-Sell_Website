@@ -18,7 +18,7 @@ const app = express()
 
 const GEMINI_API_KEY = "AIzaSyBRtucveBlj7s8XuWfd2x_mfmcmqq8VajM"
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 
 const OTPgen = () => {
@@ -77,6 +77,7 @@ app.post("/api/register", async function (req, res) {
 app.post("/api/login", async function (req, res) {
     try {
         const { Email, Password, captchaToken } = req.body
+  
         if (!Email || !Password) {
             return res.status(400).json({ error: 'Please Enter Your Credentials.' });
         }
@@ -908,33 +909,46 @@ app.post("/api/removefromorders", async function (req, res) {
 
 app.post("/api/chatbot", async function (req, res) {
     try {
-        const token = req.cookies.token
+        const token = req.cookies.token;
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized request 1' });
         }
 
-        const decodedToken = jwt.verify(token, secretkey)
+        const decodedToken = jwt.verify(token, secretkey);
         if (!decodedToken) {
             return res.status(401).json({ error: 'Unauthorized request 2' });
         }
 
-        const user = await User.findById(decodedToken.userId)
-        const { message,history } = req.body;
+        const user = await User.findById(decodedToken.userId);
+        const { message, history } = req.body;
 
-        if (!message) return res.status(400).json({ error: "Message is required" });
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
 
-        let completechat = history.map(msg => `${msg.sender}: ${msg.text}`).join("\n");
-        completechat += 'AI';
-        const result = await model.generateContent(completechat);
+        const conversationHistory = history.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.text }]
+        }));
+
+        conversationHistory.push({
+            role: 'user',
+            parts: [{ text: message }]
+        });
+
+        const chat = model.startChat({
+            history: conversationHistory.slice(0, -1) 
+        });
+
+        const result = await chat.sendMessage(message);
         const response = result.response.text();
 
         res.json({ reply: response });
     } catch (error) {
         console.error("Error:", error);
-        return "Sorry, I couldn't process your request.";
+        res.status(500).json({ error: "Sorry, I couldn't process your request." });
     }
-})
-
+});
 
 app.listen(4000, () => {
     console.log("listening on port 4000")
