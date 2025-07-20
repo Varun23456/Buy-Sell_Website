@@ -16,10 +16,10 @@ import path from 'path';
 
 dotenv.config();
 const app = express()
-app.use((req, res, next) => {
-    console.log(`Received ${req.method} request for ${req.url}`);
-    next();
-});
+// app.use((req, res, next) => {
+    // console.log(`Received ${req.method} request for ${req.url}`);
+    // next();
+// });
 
 const __dirname = path.resolve();
 
@@ -160,7 +160,6 @@ app.post("/api/logout", async function (req, res) {
             secure: true,
             sameSite: 'None',
             maxAge: 0,
-            domain: "localhost"
         });
 
         return res.status(201).json({ message: 'Logged out successful' });
